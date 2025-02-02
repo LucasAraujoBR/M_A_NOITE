@@ -1,0 +1,33 @@
+version: "3.8"
+services:
+  app:
+    build: ./app/
+    depends_on:
+      - db
+    environment:
+      - DB_HOST=db       # Adicionar variável de ambiente para o host do DB
+      - DB_PORT=5432
+      - DB_USER=admin
+      - DB_PASSWORD=123L123
+      - DB_NAME=database
+    ports:
+      - "5000:5000"      # Expondo a porta do Flask
+    networks:
+      - m_an_network
+
+  db:
+    build: ./database/
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=123L123
+      - POSTGRES_DB=database
+    volumes:
+      - ./database/init:/docker-entrypoint-initdb.d  # Para carregar o script de inicialização
+    ports:
+      - "5432:5432"      # Expondo a porta do PostgreSQL para comunicação externa
+    networks:
+      - m_an_network
+
+networks:
+  m_an_network:    # Definindo uma rede personalizada para comunicação entre os containers
+    driver: bridge
