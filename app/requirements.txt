@@ -2,3 +2,4 @@ sqlalchemy
 psycopg2
 flask 
 flask_sqlalchemy
+matplotlib
