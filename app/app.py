@@ -1,5 +1,8 @@
-from flask import Flask, jsonify, request
 import time
+
+
+from flask import Flask, jsonify, request
+from flask_cors import CORS
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -16,7 +19,7 @@ db = create_engine(db_string)
 
 # Criando o aplicativo Flask
 app = Flask(__name__)
-
+CORS(app)
 # ---------------------------- CRUD Usuários ---------------------------- #
 
 @app.route('/users', methods=['POST'])
