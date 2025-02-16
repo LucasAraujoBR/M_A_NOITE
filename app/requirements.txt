@@ -4,3 +4,4 @@ flask
 flask_sqlalchemy
 matplotlib
 flask-cors
+openai

@@ -1,6 +1,8 @@
 import time
+import os
 
 
+from openai import OpenAI
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from sqlalchemy import create_engine, text
@@ -20,6 +22,91 @@ db = create_engine(db_string)
 # Criando o aplicativo Flask
 app = Flask(__name__)
 CORS(app)
+
+
+# ---------------------------- OPENAI interação ---------------------------- #
+
+@app.route('/projects/match-agile', methods=['POST'])
+def match_agile():
+    try:
+        data = request.get_json()
+
+        project_id = data.get('project_id')
+        user_ids = data.get('user_ids', [])  # Lista de IDs de usuários
+
+        if not project_id or not user_ids:
+            return jsonify({"error": "É necessário fornecer o ID do projeto e os IDs dos usuários."}), 400
+
+        # Buscar projeto com tarefas usando a tabela intermediária project_tasks
+        project_query = text("""
+            SELECT 
+                p.id, 
+                p.name, 
+                p.description, 
+                json_agg(json_build_object('id', t.id, 'title', t.title, 'description', t.description, 'category', t.category)) AS tasks
+            FROM projects p
+            JOIN project_tasks pt ON p.id = pt.project_id
+            JOIN tasks t ON pt.task_id = t.id
+            WHERE p.id = :id
+            GROUP BY p.id, p.name, p.description
+        """)
+
+        # Buscar usuários específicos
+        users_query = text("""
+            SELECT id, name, email, personality, level, areas 
+            FROM users 
+            WHERE id IN :user_ids
+        """)
+
+        with db.connect() as connection:
+            project_result = connection.execute(project_query, {"id": project_id}).fetchone()
+            users_result = connection.execute(users_query, {"user_ids": tuple(user_ids)}).fetchall()
+
+            if not project_result:
+                return jsonify({"error": "Projeto não encontrado"}), 404
+
+            if not users_result:
+                return jsonify({"error": "Nenhum usuário encontrado com os IDs fornecidos"}), 404
+
+            project = dict(project_result._mapping)
+            users = [dict(row._mapping) for row in users_result]
+
+        client = OpenAI(api_key = os.getenv('API_KEY_GPT'))
+
+        # Montar payload para o GPT
+        prompt = {
+            "system": "Você é um especialista em metodologias ágeis e alocação de talentos.",
+            "content": f"""
+                Dado o seguinte projeto com suas tarefas:
+                {project}
+
+                E os seguintes usuários com suas características:
+                {users}
+
+                Crie um relatório 'match agile' que relacione os usuários às tarefas de maneira inteligente e prática, considerando as competências, personalidades e áreas de atuação.
+                Inclua insights estratégicos para otimizar a entrega do projeto.
+            """,
+            "output_limit_text": "O relatório deve ser objetivo, com insights claros e direcionados."
+        }
+        # Chamar a API do GPT
+        response = client.chat.completions.create(
+            model="gpt-4o-mini-2024-07-18",
+            messages=[
+                {"role": "system", "content": prompt["system"]},
+                {"role": "user", "content": prompt["content"]}
+            ],
+            max_tokens=1000
+        )
+        
+
+        return jsonify(response.choices[0].message.content), 200
+
+    except SQLAlchemyError as e:
+        return jsonify({"error": "Erro ao buscar dados do banco", "details": str(e)}), 500
+    except Exception as e:
+        return jsonify({"error": "Erro ao gerar relatório com GPT", "details": str(e)}), 500
+
+
 # ---------------------------- CRUD Usuários ---------------------------- #
 
 @app.route('/users', methods=['POST'])
@@ -150,7 +237,6 @@ def delete_user(user_id):
     except SQLAlchemyError as e:
         return jsonify({"error": "Erro ao excluir usuário", "details": str(e)}), 500
 
-from sqlalchemy.exc import SQLAlchemyError
 
 # ---------------------------- CRUD Tarefas ---------------------------- #
 
@@ -274,7 +360,17 @@ def create_project():
 
 @app.route('/projects', methods=['GET'])
 def get_projects():
-    query = text("SELECT id, name, description FROM projects")
+    query = text("""
+        SELECT 
+            p.id, 
+            p.name, 
+            p.description, 
+            json_agg(json_build_object('id', t.id, 'title', t.title, 'description', t.description, 'category', t.category)) AS tasks
+        FROM projects p
+        JOIN project_tasks pt ON p.id = pt.project_id
+        JOIN tasks t ON pt.task_id = t.id
+        GROUP BY p.id, p.name, p.description
+    """)
     try:
         with db.connect() as connection:
             result = connection.execute(query)
@@ -285,7 +381,18 @@ def get_projects():
 
 @app.route('/projects/<int:project_id>', methods=['GET'])
 def get_project(project_id):
-    query = text("SELECT id, name, description FROM projects WHERE id = :id")
+    query = text("""
+        SELECT 
+            p.id, 
+            p.name, 
+            p.description, 
+            json_agg(json_build_object('id', t.id, 'title', t.title, 'description', t.description, 'category', t.category)) AS tasks
+        FROM projects p
+        JOIN project_tasks pt ON p.id = pt.project_id
+        JOIN tasks t ON pt.task_id = t.id
+        WHERE p.id = :id
+        GROUP BY p.id, p.name, p.description
+    """)
     try:
         with db.connect() as connection:
             result = connection.execute(query, {"id": project_id}).fetchone()
@@ -294,6 +401,8 @@ def get_project(project_id):
             return jsonify({"error": "Projeto não encontrado"}), 404
     except SQLAlchemyError as e:
         return jsonify({"error": "Erro ao buscar projeto", "details": str(e)}), 500
+
+
 
 @app.route('/projects/<int:project_id>', methods=['PUT'])
 def update_project(project_id):
