@@ -5,3 +5,8 @@ flask_sqlalchemy
 matplotlib
 flask-cors
 openai
+pandas
+reportlab
+Python-IO
+XlsxWriter
+requests

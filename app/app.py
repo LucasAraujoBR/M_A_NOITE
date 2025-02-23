@@ -1,12 +1,17 @@
 import time
 import os
+import io
 
 
+import pandas as pd
 from openai import OpenAI
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+
 
 # Configuração do banco de dados
 db_name = 'database'
@@ -22,6 +27,33 @@ db = create_engine(db_string)
 # Criando o aplicativo Flask
 app = Flask(__name__)
 CORS(app)
+
+# ---------------------------- EXPORT PDF / EXCEL -------------------------- #
+
+@app.route('/generate_file', methods=['POST'])
+def generate_file():
+    data = request.json
+    text = data.get('text', 'Sem conteúdo')
+    file_type = data.get('file_type', 'pdf')
+    
+    if file_type == 'pdf':
+        buffer = io.BytesIO()
+        pdf = canvas.Canvas(buffer, pagesize=letter)
+        pdf.drawString(100, 750, text)
+        pdf.save()
+        buffer.seek(0)
+        return send_file(buffer, as_attachment=True, download_name="output.pdf", mimetype='application/pdf')
+    
+    elif file_type == 'excel':
+        buffer = io.BytesIO()
+        df = pd.DataFrame([[text]], columns=["Content"])
+        with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+            df.to_excel(writer, index=False, sheet_name='Sheet1')
+        buffer.seek(0)
+        return send_file(buffer, as_attachment=True, download_name="output.xlsx", mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    
+    return {"error": "Invalid file type"}, 400
+
 
 
 # ---------------------------- OPENAI interação ---------------------------- #
@@ -243,14 +275,14 @@ def delete_user(user_id):
 @app.route('/tasks', methods=['POST'])
 def create_task():
     data = request.get_json()
-    required_fields = ['title', 'description', 'category', 'project_id']
+    required_fields = ['title', 'description', 'category']
     missing_fields = [field for field in required_fields if field not in data or not data[field]]
     if missing_fields:
         return jsonify({"error": f"Campos obrigatórios ausentes: {', '.join(missing_fields)}"}), 400
 
     query = text("""
-        INSERT INTO tasks (title, description, category, project_id)
-        VALUES (:title, :description, :category, :project_id)
+        INSERT INTO tasks (title, description, category)
+        VALUES (:title, :description, :category)
         RETURNING id
     """)
     try:
@@ -265,7 +297,7 @@ def create_task():
 
 @app.route('/tasks', methods=['GET'])
 def get_tasks():
-    query = text("SELECT id, title, description, category, project_id FROM tasks")
+    query = text("SELECT id, title, description, category FROM tasks")
 
     try:
         with db.connect() as connection:
@@ -278,7 +310,7 @@ def get_tasks():
 
 @app.route('/tasks/<int:task_id>', methods=['GET'])
 def get_task(task_id):
-    query = text("SELECT id, title, description, category, project_id FROM tasks WHERE id = :id")
+    query = text("SELECT id, title, description, category FROM tasks WHERE id = :id")
 
     try:
         with db.connect() as connection:
@@ -293,7 +325,7 @@ def get_task(task_id):
 @app.route('/tasks/<int:task_id>', methods=['PUT'])
 def update_task(task_id):
     data = request.get_json()
-    allowed_fields = ['title', 'description', 'category', 'project_id']
+    allowed_fields = ['title', 'description', 'category']
     fields_to_update = {key: value for key, value in data.items() if key in allowed_fields and value}
 
     if not fields_to_update:
@@ -451,6 +483,73 @@ def delete_project(project_id):
         return jsonify({"message": "Projeto excluído"}), 200
     except SQLAlchemyError as e:
         return jsonify({"error": "Erro ao excluir projeto", "details": str(e)}), 500
+
+# ---------------------------- Crud Project_tasks ---------------------- #
+
+@app.route('/project_tasks', methods=['POST'])
+def create_project_task():
+    data = request.get_json()
+    if 'project_id' not in data or 'task_id' not in data:
+        return jsonify({"error": "Campos 'project_id' e 'task_id' são obrigatórios"}), 400
+
+    query = text("""
+        INSERT INTO project_tasks (project_id, task_id) 
+        VALUES (:project_id, :task_id)
+    """)
+    try:
+        with db.connect() as connection:
+            connection.execute(query, data)
+            connection.commit()
+        return jsonify({"message": "Relação projeto-tarefa criada"}), 201
+    except SQLAlchemyError as e:
+        return jsonify({"error": "Erro ao criar relação", "details": str(e)}), 500
+
+@app.route('/project_tasks', methods=['GET'])
+def get_project_tasks():
+    query = text("""
+        SELECT project_id, task_id FROM project_tasks
+    """)
+    try:
+        with db.connect() as connection:
+            result = connection.execute(query)
+            project_tasks = [dict(row._mapping) for row in result]
+        return jsonify(project_tasks), 200
+    except SQLAlchemyError as e:
+        return jsonify({"error": "Erro ao buscar relações", "details": str(e)}), 500
+
+@app.route('/project_tasks/<int:project_id>', methods=['GET'])
+def get_project_tasks_by_project(project_id):
+    query = text("""
+        SELECT task_id FROM project_tasks WHERE project_id = :project_id
+    """)
+    try:
+        with db.connect() as connection:
+            result = connection.execute(query, {"project_id": project_id})
+            tasks = [row.task_id for row in result]
+        return jsonify({"project_id": project_id, "tasks": tasks}), 200
+    except SQLAlchemyError as e:
+        return jsonify({"error": "Erro ao buscar tarefas do projeto", "details": str(e)}), 500
+
+@app.route('/project_tasks', methods=['DELETE'])
+def delete_project_task():
+    data = request.get_json()
+    if 'project_id' not in data or 'task_id' not in data:
+        return jsonify({"error": "Campos 'project_id' e 'task_id' são obrigatórios"}), 400
+
+    query = text("""
+        DELETE FROM project_tasks WHERE project_id = :project_id AND task_id = :task_id
+    """)
+    try:
+        with db.connect() as connection:
+            result = connection.execute(query, data)
+            if result.rowcount == 0:
+                return jsonify({"error": "Relação não encontrada"}), 404
+            connection.commit()
+        return jsonify({"message": "Relação projeto-tarefa removida"}), 200
+    except SQLAlchemyError as e:
+        return jsonify({"error": "Erro ao remover relação", "details": str(e)}), 500
+
+
 # ---------------------------- Rota inicial ---------------------------- #
 
 @app.route('/')

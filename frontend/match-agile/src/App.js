@@ -10,6 +10,7 @@ import ProjectList from './components/Projects/ProjectsList';
 import CreateProject from './components/Projects/CreateProjetects';
 import EditProject from './components/Projects/EditProjects';
 import TaskList from './components/Tasks/TasksList';
+import ProjectUserSelect from './components/MatchAgile/SendUsersProject';
 
 const App = () => {
   return (
@@ -25,6 +26,7 @@ const App = () => {
       <Route path="/projects" element={<ProjectList />} />
       <Route path="/projects/create" element={<CreateProject />} />
       <Route path="/projects/edit/:projectId" element={<EditProject />} />
+      <Route path="/match_agile" element={<ProjectUserSelect />} />
       </Routes>
     </Router>
   );
