@@ -10,3 +10,5 @@ reportlab
 Python-IO
 XlsxWriter
 requests
+async
+flask[async]

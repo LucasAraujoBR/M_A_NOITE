@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { Link } from 'react-router-dom';
+import BackButton from "../Common/BackButton"; 
+
 
 const TaskList = () => {
   const [tasks, setTasks] = useState([]);
@@ -28,6 +30,7 @@ const TaskList = () => {
 
   return (
     <div className="task-list-container">
+      <BackButton />
       <h2>Tarefas</h2>
       <Link to="/tasks/create" className="btn-create">Criar Nova Tarefa</Link>
       <ul className="task-list">

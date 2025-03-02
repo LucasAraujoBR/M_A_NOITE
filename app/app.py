@@ -4,13 +4,20 @@ import io
 
 
 import pandas as pd
-from openai import OpenAI
+from openai import AsyncOpenAI
 from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+from flask import Flask, request, send_file
+import io
+import pandas as pd
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
 
 
 # Configuração do banco de dados
@@ -35,31 +42,99 @@ def generate_file():
     data = request.json
     text = data.get('text', 'Sem conteúdo')
     file_type = data.get('file_type', 'pdf')
-    
+
     if file_type == 'pdf':
         buffer = io.BytesIO()
-        pdf = canvas.Canvas(buffer, pagesize=letter)
-        pdf.drawString(100, 750, text)
-        pdf.save()
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=letter,
+            rightMargin=40,
+            leftMargin=40,
+            topMargin=60,
+            bottomMargin=40
+        )
+
+        # Evitando conflito com estilos padrões
+        styles = getSampleStyleSheet()
+        styles.add(ParagraphStyle(
+            name='CustomTitle',
+            fontSize=18,
+            leading=22,
+            alignment=TA_CENTER,
+            spaceAfter=20
+        ))
+        styles.add(ParagraphStyle(
+            name='CustomHeading',
+            fontSize=14,
+            leading=18,
+            spaceBefore=12,
+            spaceAfter=8,
+            alignment=TA_LEFT
+        ))
+        styles.add(ParagraphStyle(
+            name='CustomBodyText',
+            fontSize=12,
+            leading=15,
+            alignment=TA_LEFT
+        ))
+
+        story = []
+
+        # Se quiser adicionar um título principal fixo ao documento:
+        story.append(Paragraph("Título do Documento", styles['CustomTitle']))
+        story.append(Spacer(1, 12))
+
+        # Processa o texto para separar por títulos
+        sections = text.split("### ")
+        for section in sections:
+            if not section.strip():
+                continue
+            lines = section.strip().split("\n", 1)
+            title = lines[0].strip()
+            body = lines[1].strip() if len(lines) > 1 else ""
+
+            # Adiciona o título e o corpo do texto no PDF
+            story.append(Paragraph(title, styles['CustomHeading']))
+            story.append(Spacer(1, 6))
+
+            for paragraph in body.split("\n"):
+                if paragraph.strip():
+                    story.append(Paragraph(paragraph.strip(), styles['CustomBodyText']))
+                    story.append(Spacer(1, 6))
+
+            story.append(Spacer(1, 12))
+
+        doc.build(story)
         buffer.seek(0)
-        return send_file(buffer, as_attachment=True, download_name="output.pdf", mimetype='application/pdf')
-    
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name="output.pdf",
+            mimetype='application/pdf'
+        )
+
     elif file_type == 'excel':
         buffer = io.BytesIO()
         df = pd.DataFrame([[text]], columns=["Content"])
         with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
             df.to_excel(writer, index=False, sheet_name='Sheet1')
         buffer.seek(0)
-        return send_file(buffer, as_attachment=True, download_name="output.xlsx", mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name="output.xlsx",
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+
     return {"error": "Invalid file type"}, 400
+
 
 
 
 # ---------------------------- OPENAI interação ---------------------------- #
 
 @app.route('/projects/match-agile', methods=['POST'])
-def match_agile():
+async def match_agile():
     try:
         data = request.get_json()
 
@@ -103,7 +178,7 @@ def match_agile():
             project = dict(project_result._mapping)
             users = [dict(row._mapping) for row in users_result]
 
-        client = OpenAI(api_key = os.getenv('API_KEY_GPT'))
+        client = AsyncOpenAI(api_key=os.getenv('API_KEY_GPT', 'insira_chave_gpt_aqui'))
 
         # Montar payload para o GPT
         prompt = {
@@ -116,12 +191,13 @@ def match_agile():
                 {users}
 
                 Crie um relatório 'match agile' que relacione os usuários às tarefas de maneira inteligente e prática, considerando as competências, personalidades e áreas de atuação.
-                Inclua insights estratégicos para otimizar a entrega do projeto.
+                Inclua insights estratégicos para otimizar a entrega do projeto. Lembre-se todos os usuários precisam ser alocados em pelo menos uma tarefa, mesmo que sejam auxliandos por outro.
             """,
             "output_limit_text": "O relatório deve ser objetivo, com insights claros e direcionados."
         }
-        # Chamar a API do GPT
-        response = client.chat.completions.create(
+        
+        # Chamar a API do GPT de forma assíncrona
+        response = await client.chat.completions.create(
             model="gpt-4o-mini-2024-07-18",
             messages=[
                 {"role": "system", "content": prompt["system"]},
@@ -129,7 +205,6 @@ def match_agile():
             ],
             max_tokens=1000
         )
-        
 
         return jsonify(response.choices[0].message.content), 200
 
@@ -224,9 +299,13 @@ def update_user(user_id):
     if missing_fields:
         return jsonify({"error": f"Campos obrigatórios ausentes: {', '.join(missing_fields)}"}), 400
 
+    # Verifica se o 'personality' é uma string e converte para lista
+    if isinstance(data['personality'], str):
+        data['personality'] = [item.strip() for item in data['personality'].split(',')]
+
     # Verifica se o usuário existe antes de atualizar
     check_query = text("SELECT id FROM users WHERE id = :id")
-    update_query = text("""
+    update_query = text(""" 
         UPDATE users 
         SET name = :name, email = :email, personality = :personality, level = :level, areas = :areas
         WHERE id = :id
@@ -248,6 +327,7 @@ def update_user(user_id):
 
     except SQLAlchemyError as e:
         return jsonify({"error": "Erro ao atualizar usuário", "details": str(e)}), 500
+
 
 @app.route('/users/<int:user_id>', methods=['DELETE'])
 def delete_user(user_id):

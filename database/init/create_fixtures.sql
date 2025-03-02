@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(100) NOT NULL,
     personality TEXT[],
     level VARCHAR(50),
-    areas TEXT[] CHECK (areas <@ ARRAY['Backend', 'Frontend', 'IA', 'Design', 'Tester']),
+    areas TEXT[] CHECK (areas <@ ARRAY['Backend', 'Frontend', 'IA', 'Design', 'QA']),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -39,14 +39,14 @@ CREATE TABLE IF NOT EXISTS project_tasks (
 INSERT INTO users (name, email, personality, level, areas) VALUES
 ('Lucas Silva', 'lucas@email.com', ARRAY['Analítico', 'Criativo'], 'Sênior', ARRAY['Backend', 'IA']),
 ('Mariana Costa', 'mariana@email.com', ARRAY['Empático', 'Organizado'], 'Pleno', ARRAY['Frontend', 'Design']),
-('Roberto Lima', 'roberto@email.com', ARRAY['Estratégico', 'Persuasivo'], 'Júnior', ARRAY['Tester', 'Backend']),
+('Roberto Lima', 'roberto@email.com', ARRAY['Estratégico', 'Persuasivo'], 'Júnior', ARRAY['QA', 'Backend']),
 ('Ana Souza', 'ana@email.com', ARRAY['Racional', 'Detalhista'], 'Pleno', ARRAY['IA', 'Frontend']),
-('Carlos Mendes', 'carlos@email.com', ARRAY['Dinâmico', 'Pragmático'], 'Sênior', ARRAY['Backend', 'Tester']),
+('Carlos Mendes', 'carlos@email.com', ARRAY['Dinâmico', 'Pragmático'], 'Sênior', ARRAY['Backend', 'QA']),
 ('Fernanda Rocha', 'fernanda@email.com', ARRAY['Assertivo', 'Paciente'], 'Júnior', ARRAY['Design', 'Frontend']),
 ('Diego Farias', 'diego@email.com', ARRAY['Criativo', 'Visionário'], 'Sênior', ARRAY['IA', 'Backend']),
-('Tatiane Alves', 'tatiane@email.com', ARRAY['Detalhista', 'Analítico'], 'Pleno', ARRAY['Tester', 'Design']),
+('Tatiane Alves', 'tatiane@email.com', ARRAY['Detalhista', 'Analítico'], 'Pleno', ARRAY['QA', 'Design']),
 ('Gabriel Martins', 'gabriel@email.com', ARRAY['Estratégico', 'Lógico'], 'Sênior', ARRAY['Frontend', 'IA']),
-('Bianca Nogueira', 'bianca@email.com', ARRAY['Empático', 'Resiliente'], 'Júnior', ARRAY['Design', 'Tester']);
+('Bianca Nogueira', 'bianca@email.com', ARRAY['Empático', 'Resiliente'], 'Júnior', ARRAY['Design', 'QA']);
 
 -- Inserir 5 projetos fictícios
 INSERT INTO projects (name, description) VALUES
@@ -64,19 +64,19 @@ INSERT INTO tasks (title, description, category) VALUES
 ('Análise de dados com IA', 'Gerar insights com machine learning.', 'IA'),
 ('Criação de wireframes', 'Definir layout para interface.', 'Design'),
 ('Prototipagem de interface', 'Criar protótipos interativos.', 'Design'),
-('Escrita de testes unitários', 'Garantir qualidade do código.', 'Tester'),
-('Automatização de testes', 'Criar scripts para testes automatizados.', 'Tester'),
+('Escrita de testes unitários', 'Garantir qualidade do código.', 'QA'),
+('Automatização de testes', 'Criar scripts para testes automatizados.', 'QA'),
 ('Refatoração de frontend', 'Melhorar código de componentes.', 'Frontend'),
 ('Criação de animações', 'Adicionar transições dinâmicas.', 'Frontend'),
 ('Segurança de API', 'Implementar autenticação JWT.', 'Backend'),
 ('Treinamento de chatbot', 'Melhorar respostas automáticas.', 'IA'),
 ('Redesenho de dashboard', 'Atualizar visualização de dados.', 'Design'),
-('Testes de carga', 'Avaliar desempenho sob estresse.', 'Tester'),
+('Testes de carga', 'Avaliar desempenho sob estresse.', 'QA'),
 ('Integração de framework', 'Adicionar suporte a biblioteca nova.', 'Frontend'),
 ('Monitoramento de logs', 'Criar sistema de tracking de erros.', 'Backend'),
 ('Processamento de linguagem natural', 'Usar NLP para análise de textos.', 'IA'),
 ('Design responsivo', 'Melhorar adaptação para mobile.', 'Design'),
-('Validação de componentes', 'Testar interatividade do frontend.', 'Tester'),
+('Validação de componentes', 'Testar interatividade do frontend.', 'QA'),
 ('Otimização de carregamento', 'Melhorar performance de frontend.', 'Frontend');
 
 -- Inserir associações entre projetos e tarefas (N:N)

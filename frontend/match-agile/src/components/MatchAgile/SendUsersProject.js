@@ -1,32 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import api from '../../services/api';
+import React, { useState, useEffect } from "react";
+import api from "../../services/api";
+import BackButton from "../Common/BackButton";
 
 const ProjectUserSelect = () => {
-  const [projects, setProjects] = useState([]); // Para armazenar os projetos disponíveis
-  const [users, setUsers] = useState([]); // Para armazenar todos os usuários
-  const [selectedUsers, setSelectedUsers] = useState([]); // Para armazenar os usuários selecionados
-  const [selectedProject, setSelectedProject] = useState(''); // Para armazenar o projeto escolhido
-  const [loading, setLoading] = useState(false); // Para controlar o estado de carregamento
-  const [responseMessage, setResponseMessage] = useState(''); // Para armazenar a resposta da API
+  const [projects, setProjects] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [selectedProject, setSelectedProject] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  // Carregar projetos e usuários no useEffect
   useEffect(() => {
     const fetchProjectsAndUsers = async () => {
       try {
-        const projectsResponse = await api.get('/projects'); // Ajuste para a sua API de projetos
+        const [projectsResponse, usersResponse] = await Promise.all([
+          api.get("/projects"),
+          api.get("/users"),
+        ]);
         setProjects(projectsResponse.data);
-
-        const usersResponse = await api.get('/users');
         setUsers(usersResponse.data);
       } catch (error) {
-        console.error('Erro ao carregar projetos ou usuários', error);
+        console.error("Erro ao carregar projetos ou usuários", error);
       }
     };
-
     fetchProjectsAndUsers();
   }, []);
 
-  // Função para alternar seleção de usuários
   const toggleUserSelection = (userId) => {
     setSelectedUsers((prevSelectedUsers) =>
       prevSelectedUsers.includes(userId)
@@ -35,37 +33,65 @@ const ProjectUserSelect = () => {
     );
   };
 
-  // Função para enviar dados ao backend
   const handleSubmit = async () => {
     if (!selectedProject || selectedUsers.length === 0) {
-      alert('Por favor, escolha um projeto e selecione pelo menos um usuário.');
+      alert("Por favor, escolha um projeto e selecione pelo menos um usuário.");
       return;
     }
-
-    setLoading(true); // Inicia o carregamento
-
+  
+    setLoading(true);
+  
     try {
       const payload = {
-        project: selectedProject,
-        users: selectedUsers,
+        project_id: selectedProject,
+        user_ids: selectedUsers,
       };
-
-      const response = await api.post('http://127.0.0.1:5000/projects/match-agile', payload);
-      setResponseMessage(response.data.message || 'Usuários enviados com sucesso!'); // Armazena a mensagem retornada da API
+  
+      // 1. Pega a string pura da rota /projects/match-agile
+      const response = await api.post("/projects/match-agile", payload);
+      let pureString = typeof response.data === "string" ? response.data : response.data.message;
+  
+      // 2. Normaliza o texto para melhor formatação
+      pureString = pureString
+        .replace(/([.!?])\s*/g, "$1\n") // quebra linha após pontuações finais
+        .replace(/\s{2,}/g, " ") // remove espaços duplicados
+        .trim(); // remove espaços no início e fim
+  
+      // 3. Envia o texto normalizado para /generate_file
+      const fileResponse = await api.post(
+        "http://localhost:5000/generate_file",
+        { text: pureString, file_type: "pdf" },
+        { responseType: "blob" }
+      );
+  
+      // 4. Faz o download automático do PDF
+      const url = window.URL.createObjectURL(new Blob([fileResponse.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "relatorio.pdf");
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+  
     } catch (error) {
-      console.error('Erro ao enviar dados', error);
-      setResponseMessage('Ocorreu um erro ao enviar os dados.');
+      console.error("Erro ao gerar o relatório", error);
+      alert("Ocorreu um erro ao gerar o relatório.");
     } finally {
-      setLoading(false); // Finaliza o carregamento
+      setLoading(false);
     }
   };
+  
+  
 
   return (
     <div style={styles.container}>
+      <BackButton />
       <h2 style={styles.heading}>Selecionar Usuários para o Projeto</h2>
 
       <div style={styles.selectContainer}>
-        <label htmlFor="project-select" style={styles.label}>Escolha um Projeto:</label>
+        <label htmlFor="project-select" style={styles.label}>
+          Escolha um Projeto:
+        </label>
         <select
           id="project-select"
           value={selectedProject}
@@ -91,130 +117,93 @@ const ProjectUserSelect = () => {
               onChange={() => toggleUserSelection(user.id)}
               style={styles.checkbox}
             />
-            <span style={styles.userName}>{user.name} ({user.email})</span>
+            <span style={styles.userName}>
+              {user.name} ({user.email})
+            </span>
           </li>
         ))}
       </ul>
 
       <button onClick={handleSubmit} disabled={loading} style={styles.button}>
-        {loading ? 'Carregando...' : 'Enviar para o Projeto'}
+        {loading ? "Gerando PDF..." : "Gerar relatório em PDF"}
       </button>
-
-      {/* Pop-up de mensagem */}
-      {responseMessage && (
-        <div style={styles.popup}>
-          <p>{responseMessage}</p>
-        </div>
-      )}
     </div>
   );
 };
 
 const styles = {
   container: {
-    fontFamily: 'Arial, sans-serif',
-    backgroundColor: '#f9f9f9',
-    padding: '30px',
-    borderRadius: '8px',
-    maxWidth: '600px',
-    margin: '50px auto',
-    boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)',
+    fontFamily: "Arial, sans-serif",
+    backgroundColor: "#f9f9f9",
+    padding: "30px",
+    borderRadius: "8px",
+    maxWidth: "800px",
+    margin: "50px auto",
+    boxShadow: "0 4px 10px rgba(0, 0, 0, 0.1)",
   },
   heading: {
-    textAlign: 'center',
-    color: '#333',
-    fontSize: '2rem',
-    marginBottom: '20px',
+    textAlign: "center",
+    color: "#333",
+    fontSize: "2rem",
+    marginBottom: "20px",
   },
   subHeading: {
-    color: '#555',
-    fontSize: '1.5rem',
-    marginBottom: '10px',
+    color: "#555",
+    fontSize: "1.5rem",
+    marginBottom: "10px",
   },
   selectContainer: {
-    marginBottom: '20px',
+    marginBottom: "20px",
   },
   label: {
-    display: 'block',
-    marginBottom: '8px',
-    color: '#444',
-    fontSize: '1rem',
+    display: "block",
+    marginBottom: "8px",
+    color: "#444",
+    fontSize: "1rem",
   },
   select: {
-    width: '100%',
-    padding: '10px',
-    fontSize: '1rem',
-    borderRadius: '5px',
-    border: '1px solid #ddd',
-    outline: 'none',
-    transition: 'border-color 0.3s',
-  },
-  select: {
-    width: '100%',
-    padding: '10px',
-    fontSize: '1rem',
-    borderRadius: '5px',
-    border: '1px solid #ddd',
-    outline: 'none',
-    transition: 'border-color 0.3s',
+    width: "100%",
+    padding: "10px",
+    fontSize: "1rem",
+    borderRadius: "5px",
+    border: "1px solid #ddd",
+    outline: "none",
+    transition: "border-color 0.3s",
   },
   userList: {
-    listStyle: 'none',
-    padding: '0',
-    margin: '0',
+    listStyle: "none",
+    padding: "0",
+    margin: "0",
+    maxHeight: "200px",
+    overflowY: "auto",
+    border: "1px solid #ddd",
+    borderRadius: "5px",
+    marginBottom: "20px",
   },
   userItem: {
-    display: 'flex',
-    alignItems: 'center',
-    marginBottom: '10px',
-    padding: '5px 0',
-    borderBottom: '1px solid #eee',
+    display: "flex",
+    alignItems: "center",
+    padding: "8px",
+    borderBottom: "1px solid #eee",
   },
   checkbox: {
-    marginRight: '10px',
+    marginRight: "10px",
   },
   userName: {
-    fontSize: '1rem',
-    color: '#555',
+    fontSize: "1rem",
+    color: "#555",
   },
   button: {
-    display: 'block',
-    width: '100%',
-    padding: '12px 20px',
-    backgroundColor: '#007bff',
-    color: 'white',
-    border: 'none',
-    borderRadius: '5px',
-    fontSize: '1.1rem',
-    cursor: 'pointer',
-    transition: 'background-color 0.3s ease',
-  },
-  button: {
-    display: 'block',
-    width: '100%',
-    padding: '12px 20px',
-    backgroundColor: '#007bff',
-    color: 'white',
-    border: 'none',
-    borderRadius: '5px',
-    fontSize: '1.1rem',
-    cursor: 'pointer',
-    transition: 'background-color 0.3s ease',
-  },
-  popup: {
-    position: 'fixed',
-    top: '50%',
-    left: '50%',
-    transform: 'translate(-50%, -50%)',
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    color: 'white',
-    padding: '20px',
-    borderRadius: '8px',
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-    zIndex: 1000,
-    maxWidth: '400px',
-    width: '90%',
-    textAlign: 'center',
+    display: "block",
+    width: "100%",
+    padding: "12px 20px",
+    backgroundColor: "#007bff",
+    color: "white",
+    border: "none",
+    borderRadius: "5px",
+    fontSize: "1.1rem",
+    cursor: "pointer",
+    transition: "background-color 0.3s ease",
   },
 };
 

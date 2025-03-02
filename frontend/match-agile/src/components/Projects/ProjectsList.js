@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { Link } from 'react-router-dom';
+import BackButton from "../Common/BackButton"; 
+
 
 const ProjectList = () => {
   const [projects, setProjects] = useState([]);
-
+  
   useEffect(() => {
     const fetchProjects = async () => {
       try {
@@ -16,7 +18,7 @@ const ProjectList = () => {
     };
     fetchProjects();
   }, []);
-
+  
   const handleDelete = async (id) => {
     try {
       await api.delete(`/projects/${id}`);
@@ -25,9 +27,10 @@ const ProjectList = () => {
       console.error('Erro ao excluir projeto', error);
     }
   };
-
+  
   return (
     <div className="project-list-container">
+      <BackButton />
       <h2>Projetos</h2>
       <Link to="/projects/create" className="btn-create">Criar Novo Projeto</Link>
       <ul className="project-list">
