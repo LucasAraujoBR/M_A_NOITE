@@ -232,7 +232,7 @@ def create_user():
         VALUES (:name, :email, :personality, :level, :areas)
         RETURNING id
     """)
-
+#
     try:
         with db.connect() as connection:
             result = connection.execute(query, {
