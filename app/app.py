@@ -81,7 +81,7 @@ def generate_file():
         story = []
 
         # Se quiser adicionar um título principal fixo ao documento:
-        story.append(Paragraph("Título do Documento", styles['CustomTitle']))
+        # story.append(Paragraph("Título do Documento", styles['CustomTitle']))
         story.append(Spacer(1, 12))
 
         # Processa o texto para separar por títulos
@@ -178,23 +178,46 @@ async def match_agile():
             project = dict(project_result._mapping)
             users = [dict(row._mapping) for row in users_result]
 
-        client = AsyncOpenAI(api_key=os.getenv('API_KEY_GPT', 'insira_chave_gpt_aqui'))
+        client = AsyncOpenAI(api_key=os.getenv('API_KEY_GPT', 'xpto'))
 
         # Montar payload para o GPT
         prompt = {
-            "system": "Você é um especialista em metodologias ágeis e alocação de talentos.",
+            "system": "Você é um especialista em metodologias ágeis e alocação estratégica de talentos.",
             "content": f"""
-                Dado o seguinte projeto com suas tarefas:
-                {project}
 
-                E os seguintes usuários com suas características:
+                Não traga título do documento, siga a estrutura a baixo:
+
+                # Relatório Match Agile: {project.get('name', 'Projeto sem Nome')} <quebre linha aqui>
+
+                ## Visão Geral do Projeto
+                {project.get('description', 'Descrição não disponível')}
+
+                ## Tarefas e Alocação de Usuários
+                O projeto possui as seguintes tarefas:
+                {project.get('tasks', 'Nenhuma tarefa definida')}
+
+                Os seguintes usuários estão disponíveis para alocação, com suas respectivas competências, personalidades e áreas de atuação:
                 {users}
 
-                Crie um relatório 'match agile' que relacione os usuários às tarefas de maneira inteligente e prática, considerando as competências, personalidades e áreas de atuação.
-                Inclua insights estratégicos para otimizar a entrega do projeto. Lembre-se todos os usuários precisam ser alocados em pelo menos uma tarefa, mesmo que sejam auxliandos por outro.
+                Para cada tarefa, atribua um usuário principal e forneça uma justificativa clara para essa escolha, levando em conta:
+                - Competências técnicas e experiências relevantes
+                - Características comportamentais alinhadas à tarefa
+                - Afinidade com o tipo de atividade proposta
+
+                ## Apoio e Colaboração
+                Além do responsável principal, identifique possíveis auxiliares para cada tarefa, considerando:
+                - Conhecimentos complementares que possam agregar valor
+                - Experiência prévia em colaboração e trabalho em equipe
+                - Sinergia entre as personalidades dos envolvidos
+
+                ## Insights Estratégicoss
+                Forneça recomendações para otimizar a execução do projeto, incluindo estratégias para melhorar a colaboração, reduzir riscos e potencializar os talentos disponíveis.
+
+                **Observação:** Todos os usuários devem ser alocados em pelo menos uma tarefa, podendo atuar como responsáveis ou auxiliares.
             """,
-            "output_limit_text": "O relatório deve ser objetivo, com insights claros e direcionados."
-        }
+            "output_limit_text": "O relatório deve ser objetivo e fornecer insights estratégicos acionáveis."
+            }
+
         
         # Chamar a API do GPT de forma assíncrona
         response = await client.chat.completions.create(
@@ -202,11 +225,10 @@ async def match_agile():
             messages=[
                 {"role": "system", "content": prompt["system"]},
                 {"role": "user", "content": prompt["content"]}
-            ],
-            max_tokens=1000
+            ]
         )
 
-        return jsonify(response.choices[0].message.content), 200
+        return jsonify(response.choices[0].message.content.replace('Título do Documento','')), 200
 
     except SQLAlchemyError as e:
         return jsonify({"error": "Erro ao buscar dados do banco", "details": str(e)}), 500
@@ -637,4 +659,4 @@ def index():
     return jsonify({"message": "Welcome to the API!"})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5001)

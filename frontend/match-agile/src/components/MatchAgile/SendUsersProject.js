@@ -59,7 +59,7 @@ const ProjectUserSelect = () => {
   
       // 3. Envia o texto normalizado para /generate_file
       const fileResponse = await api.post(
-        "http://localhost:5000/generate_file",
+        "http://127.0.0.1:5001/generate_file",
         { text: pureString, file_type: "pdf" },
         { responseType: "blob" }
       );
