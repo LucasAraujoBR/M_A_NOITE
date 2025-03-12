@@ -11,7 +11,7 @@ const EditProject = () => {
   useEffect(() => {
     const fetchProject = async () => {
       try {
-        const response = await api.get(`/projects/${projectId}`);
+        const response = await api.get(`/projects_list/${projectId}`);
         setProject(response.data);
       } catch (error) {
         console.error('Erro ao buscar projeto', error);

@@ -13,7 +13,7 @@ const ProjectUserSelect = () => {
     const fetchProjectsAndUsers = async () => {
       try {
         const [projectsResponse, usersResponse] = await Promise.all([
-          api.get("/projects"),
+          api.get("/projects/projects_list"),
           api.get("/users"),
         ]);
         setProjects(projectsResponse.data);

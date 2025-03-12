@@ -512,6 +512,42 @@ def get_projects():
         return jsonify(projects), 200
     except SQLAlchemyError as e:
         return jsonify({"error": "Erro ao buscar projetos", "details": str(e)}), 500
+    
+@app.route('/projects/projects_list', methods=['GET'])
+def get_projects_list():
+    query = text("""
+        SELECT 
+            p.id, 
+            p.name, 
+            p.description
+        FROM projects p
+    """)
+    try:
+        with db.connect() as connection:
+            result = connection.execute(query)
+            projects = [dict(row._mapping) for row in result]
+        return jsonify(projects), 200
+    except SQLAlchemyError as e:
+        return jsonify({"error": "Erro ao buscar projetos", "details": str(e)}), 500
+
+@app.route('/projects_list/<int:project_id>', methods=['GET'])
+def get_project_list_list(project_id):
+    query = text("""
+        SELECT 
+            p.id, 
+            p.name, 
+            p.description
+        FROM projects p
+        WHERE p.id = :id
+    """)
+    try:
+        with db.connect() as connection:
+            result = connection.execute(query, {"id": project_id}).fetchone()
+            if result:
+                return jsonify(dict(result._mapping)), 200
+            return jsonify({"error": "Projeto não encontrado"}), 404
+    except SQLAlchemyError as e:
+        return jsonify({"error": "Erro ao buscar projeto", "details": str(e)}), 500
 
 @app.route('/projects/<int:project_id>', methods=['GET'])
 def get_project(project_id):
@@ -538,6 +574,7 @@ def get_project(project_id):
 
 
 
+    
 @app.route('/projects/<int:project_id>', methods=['PUT'])
 def update_project(project_id):
     data = request.get_json()
