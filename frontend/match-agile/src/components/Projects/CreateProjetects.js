@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import api from '../../services/api';
 import { useNavigate } from 'react-router-dom';
 import BackButton from "../Common/BackButton"; 
+import HomeButton from "../Common/HomeButton"; 
 
 const CreateProject = () => {
   const [name, setName] = useState('');
@@ -75,6 +76,8 @@ const CreateProject = () => {
 
   return (
     <div style={styles.container}>
+      <HomeButton />
+      <br></br>
       <BackButton />
       <h2 style={styles.title}>Criar Projeto</h2>
       <form style={styles.form} onSubmit={handleSubmit}>

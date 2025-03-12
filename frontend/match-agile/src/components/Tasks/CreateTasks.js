@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { useNavigate } from 'react-router-dom';
 import BackButton from '../Common/BackButton';
+import HomeButton from '../Common/HomeButton';
 
 const CreateTask = () => {
   const [title, setTitle] = useState('');
@@ -39,6 +40,8 @@ const CreateTask = () => {
 
   return (
     <div style={styles.container}>
+      <HomeButton />
+      <br></br>
       <BackButton />
       <div style={styles.card}>
         <h2 style={styles.heading}>Criar Tarefa</h2>

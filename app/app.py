@@ -377,24 +377,41 @@ def delete_user(user_id):
 @app.route('/tasks', methods=['POST'])
 def create_task():
     data = request.get_json()
-    required_fields = ['title', 'description', 'category']
+    required_fields = ['title', 'description', 'category', 'project_id']
     missing_fields = [field for field in required_fields if field not in data or not data[field]]
     if missing_fields:
         return jsonify({"error": f"Campos obrigatórios ausentes: {', '.join(missing_fields)}"}), 400
-
-    query = text("""
+    
+    task_query = text("""
         INSERT INTO tasks (title, description, category)
         VALUES (:title, :description, :category)
         RETURNING id
     """)
+    project_task_query = text("""
+        INSERT INTO project_tasks (project_id, task_id)
+        VALUES (:project_id, :task_id)
+    """)
+    
     try:
         with db.connect() as connection:
-            result = connection.execute(query, data)
+            result = connection.execute(task_query, {
+                "title": data["title"],
+                "description": data["description"],
+                "category": data["category"]
+            })
             task_id = result.fetchone()[0]
+            
+            connection.execute(project_task_query, {
+                "project_id": data["project_id"],
+                "task_id": task_id
+            })
+            
             connection.commit()
+        
         return jsonify({"message": "Task created", "id": task_id}), 201
     except SQLAlchemyError as e:
         return jsonify({"error": "Erro ao criar tarefa", "details": str(e)}), 500
+
 
 
 @app.route('/tasks', methods=['GET'])
@@ -427,7 +444,7 @@ def get_task(task_id):
 @app.route('/tasks/<int:task_id>', methods=['PUT'])
 def update_task(task_id):
     data = request.get_json()
-    allowed_fields = ['title', 'description', 'category']
+    allowed_fields = ['title', 'description', 'category', 'project_id']
     fields_to_update = {key: value for key, value in data.items() if key in allowed_fields and value}
 
     if not fields_to_update:
@@ -436,8 +453,15 @@ def update_task(task_id):
     check_query = text("SELECT id FROM tasks WHERE id = :id")
     update_query = text(f"""
         UPDATE tasks 
-        SET {', '.join(f"{key} = :{key}" for key in fields_to_update.keys())}
+        SET {', '.join(f"{key} = :{key}" for key in fields_to_update.keys() if not key == 'project_id')}
         WHERE id = :id
+    """)
+    
+    # Atualizando a relação da tarefa com o projeto
+    project_task_update_query = text("""
+        UPDATE project_tasks
+        SET project_id = :project_id
+        WHERE task_id = :task_id
     """)
 
     try:
@@ -446,14 +470,35 @@ def update_task(task_id):
             if not result:
                 return jsonify({"error": "Task not found"}), 404
 
+            # Atualizando a tarefa
             fields_to_update["id"] = task_id
-            connection.execute(update_query, fields_to_update)
+            result_update = connection.execute(update_query, fields_to_update)
+
+            # Atualizando o projeto da tarefa, caso o campo 'project_id' tenha sido fornecido
+            if 'project_id' in fields_to_update:
+                result_update = connection.execute(project_task_update_query, {
+                    "project_id": fields_to_update["project_id"],
+                    "task_id": task_id
+                })
+
+                if not result_update.rowcount:
+                    project_task_query = text("""
+                        INSERT INTO project_tasks (project_id, task_id)
+                        VALUES (:project_id, :task_id)
+                    """)
+
+                    connection.execute(project_task_query, {
+                        "project_id": fields_to_update["project_id"],
+                        "task_id": task_id
+                    })
+
             connection.commit()
 
         return jsonify({"message": "Task updated"}), 200
 
     except SQLAlchemyError as e:
         return jsonify({"error": "Erro ao atualizar tarefa", "details": str(e)}), 500
+
 
 @app.route('/tasks/<int:task_id>', methods=['DELETE'])
 def delete_task(task_id):

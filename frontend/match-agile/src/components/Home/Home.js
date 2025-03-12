@@ -5,6 +5,7 @@ const Home = () => {
   return (
     <div style={styles.container}>
       <header style={styles.header}>
+      <img src="/logo_match_agile.png" alt="Logo Match Agile" style={styles.logo} />
         <h1 style={styles.heading}>Bem-vindo ao Match Agile</h1>
         <p style={styles.subtitle}>
           Conectamos **usuários, tarefas e projetos** de forma inteligente, utilizando análise avançada para sugerir **o melhor usuário para cada tarefa**.

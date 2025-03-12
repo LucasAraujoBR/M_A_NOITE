@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import BackButton from '../Common/BackButton';
+import HomeButton from '../Common/HomeButton';
 
 const EditTask = () => {
   const { taskId } = useParams();
@@ -46,6 +47,8 @@ const EditTask = () => {
 
   return (
     <div style={styles.container}>
+      <HomeButton />
+      <br></br>
       <BackButton />
       <div style={styles.card}>
         <h2 style={styles.heading}>Editar Tarefa</h2>

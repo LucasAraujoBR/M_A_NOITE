@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { Link } from 'react-router-dom';
 import BackButton from "../Common/BackButton"; 
+import HomeButton from "../Common/HomeButton"; 
 
 
 const ProjectList = () => {
@@ -30,6 +31,8 @@ const ProjectList = () => {
   
   return (
     <div className="project-list-container">
+      <HomeButton />
+      <br></br>
       <BackButton />
       <h2>Projetos</h2>
       <Link to="/projects/create" className="btn-create">Criar Novo Projeto</Link>

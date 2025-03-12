@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { Link } from 'react-router-dom';
 import BackButton from "../Common/BackButton";
+import HomeButton from "../Common/HomeButton";
 
 const UserList = () => {
   const [users, setUsers] = useState([]);
@@ -29,6 +30,8 @@ const UserList = () => {
 
   return (
     <div className="user-list-container">
+      <HomeButton />
+      <br></br>
       <BackButton />
       <h2>Usuários</h2>
       <Link to="/users/create" className="btn-create">Criar Novo Usuário</Link>

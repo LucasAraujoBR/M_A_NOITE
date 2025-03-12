@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import api from "../../services/api";
 import BackButton from "../Common/BackButton";
+import HomeButton from "../Common/HomeButton";
 
 const ProjectUserSelect = () => {
   const [projects, setProjects] = useState([]);
@@ -13,7 +14,7 @@ const ProjectUserSelect = () => {
     const fetchProjectsAndUsers = async () => {
       try {
         const [projectsResponse, usersResponse] = await Promise.all([
-          api.get("/projects/projects_list"),
+          api.get("/projects"),
           api.get("/users"),
         ]);
         setProjects(projectsResponse.data);
@@ -85,6 +86,8 @@ const ProjectUserSelect = () => {
 
   return (
     <div style={styles.container}>
+      <HomeButton />
+      <br></br>
       <BackButton />
       <h2 style={styles.heading}>Selecionar Usuários para o Projeto</h2>
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import BackButton from "../Common/BackButton"; 
+import HomeButton from "../Common/HomeButton"; 
 
 const EditProject = () => {
   const { projectId } = useParams();
@@ -34,6 +35,8 @@ const EditProject = () => {
 
   return (
     <div style={styles.container}>
+      <HomeButton />
+      <br></br>
       <BackButton />
       <h2 style={styles.title}>Editar Projeto</h2>
       <form onSubmit={handleSubmit} style={styles.form}>

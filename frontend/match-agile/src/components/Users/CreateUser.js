@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import api from '../../services/api';
-import { useNavigate } from 'react-router-dom';
+// import { useNavigate } from 'react-router-dom';
 import BackButton from "../Common/BackButton";
+import HomeButton from "../Common/HomeButton";
 
 const CreateUser = () => {
   const [name, setName] = useState('');
@@ -12,7 +13,7 @@ const CreateUser = () => {
   const [isLoading, setIsLoading] = useState(false); // Para mostrar carregamento
   const [successMessage, setSuccessMessage] = useState(''); // Mensagem de sucesso
   const [errorMessage, setErrorMessage] = useState(''); // Mensagem de erro
-  const navigate = useNavigate(); // Correção para usar o useNavigate
+  // const navigate = useNavigate(); // Correção para usar o useNavigate
 
   const allowedAreas = ['Backend', 'Frontend', 'IA', 'Design', 'QA'];
   const allowedLevels = ['Júnior', 'Pleno', 'Sênior'];
@@ -54,6 +55,8 @@ const CreateUser = () => {
 
   return (
     <div style={styles.container}>
+      <HomeButton />
+      <br></br>
       <BackButton />
       <div style={styles.card}>
         <h2 style={styles.heading}>Criar Usuário</h2>
