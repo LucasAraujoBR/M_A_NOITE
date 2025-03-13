@@ -12,3 +12,4 @@ XlsxWriter
 requests
 async
 flask[async]
+google-generativeai

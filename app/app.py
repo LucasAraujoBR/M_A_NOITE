@@ -1,10 +1,11 @@
+import json
 import time
 import os
 import io
 
 
 import pandas as pd
-from openai import AsyncOpenAI
+import google.generativeai as genai
 from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 from sqlalchemy import create_engine, text
@@ -133,18 +134,18 @@ def generate_file():
 
 # ---------------------------- OPENAI interação ---------------------------- #
 
+genai.configure(api_key=os.getenv('API_KEY_GEMINI', 'AIzaSyCvkIO3nd39RaxT7p_CfnOthMm1fZQp0dY'))
 @app.route('/projects/match-agile', methods=['POST'])
 async def match_agile():
     try:
         data = request.get_json()
 
         project_id = data.get('project_id')
-        user_ids = data.get('user_ids', [])  # Lista de IDs de usuários
+        user_ids = data.get('user_ids', [])
 
         if not project_id or not user_ids:
             return jsonify({"error": "É necessário fornecer o ID do projeto e os IDs dos usuários."}), 400
 
-        # Buscar projeto com tarefas usando a tabela intermediária project_tasks
         project_query = text("""
             SELECT 
                 p.id, 
@@ -158,7 +159,6 @@ async def match_agile():
             GROUP BY p.id, p.name, p.description
         """)
 
-        # Buscar usuários específicos
         users_query = text("""
             SELECT id, name, email, personality, level, areas 
             FROM users 
@@ -178,62 +178,49 @@ async def match_agile():
             project = dict(project_result._mapping)
             users = [dict(row._mapping) for row in users_result]
 
-        client = AsyncOpenAI(api_key=os.getenv('API_KEY_GPT', 'xpto'))
+        # Construção do prompt para o Gemini
+        prompt = f"""
+        Você é um especialista em metodologias ágeis e alocação estratégica de talentos.
 
-        # Montar payload para o GPT
-        prompt = {
-            "system": "Você é um especialista em metodologias ágeis e alocação estratégica de talentos.",
-            "content": f"""
+        # Relatório Match Agile: {project.get('name', 'Projeto sem Nome')}
 
-                Não traga título do documento, siga a estrutura a baixo:
+        ## Visão Geral do Projeto
+        {project.get('description', 'Descrição não disponível')}
 
-                # Relatório Match Agile: {project.get('name', 'Projeto sem Nome')} <quebre linha aqui>
+        ## Tarefas e Alocação de Usuários
+        O projeto possui as seguintes tarefas:
+        {json.dumps(project.get('tasks', 'Nenhuma tarefa definida'), indent=2)}
 
-                ## Visão Geral do Projeto
-                {project.get('description', 'Descrição não disponível')}
+        Os seguintes usuários estão disponíveis para alocação, com suas respectivas competências, personalidades e áreas de atuação:
+        {json.dumps(users, indent=2)}
 
-                ## Tarefas e Alocação de Usuários
-                O projeto possui as seguintes tarefas:
-                {project.get('tasks', 'Nenhuma tarefa definida')}
+        Para cada tarefa, atribua um usuário principal e forneça uma justificativa clara para essa escolha, levando em conta:
+        - Competências técnicas e experiências relevantes
+        - Características comportamentais alinhadas à tarefa
+        - Afinidade com o tipo de atividade proposta
 
-                Os seguintes usuários estão disponíveis para alocação, com suas respectivas competências, personalidades e áreas de atuação:
-                {users}
+        ## Apoio e Colaboração
+        Além do responsável principal, identifique possíveis auxiliares para cada tarefa, considerando:
+        - Conhecimentos complementares que possam agregar valor
+        - Experiência prévia em colaboração e trabalho em equipe
+        - Sinergia entre as personalidades dos envolvidos
 
-                Para cada tarefa, atribua um usuário principal e forneça uma justificativa clara para essa escolha, levando em conta:
-                - Competências técnicas e experiências relevantes
-                - Características comportamentais alinhadas à tarefa
-                - Afinidade com o tipo de atividade proposta
+        ## Insights Estratégicos
+        Forneça recomendações para otimizar a execução do projeto, incluindo estratégias para melhorar a colaboração, reduzir riscos e potencializar os talentos disponíveis.
 
-                ## Apoio e Colaboração
-                Além do responsável principal, identifique possíveis auxiliares para cada tarefa, considerando:
-                - Conhecimentos complementares que possam agregar valor
-                - Experiência prévia em colaboração e trabalho em equipe
-                - Sinergia entre as personalidades dos envolvidos
+        **Observação:** Todos os usuários devem ser alocados em pelo menos uma tarefa, podendo atuar como responsáveis ou auxiliares.
+        """
 
-                ## Insights Estratégicoss
-                Forneça recomendações para otimizar a execução do projeto, incluindo estratégias para melhorar a colaboração, reduzir riscos e potencializar os talentos disponíveis.
+        # Chamar a API do Gemini
+        model = genai.GenerativeModel("gemini-1.5-pro")
+        response = model.generate_content(prompt)
 
-                **Observação:** Todos os usuários devem ser alocados em pelo menos uma tarefa, podendo atuar como responsáveis ou auxiliares.
-            """,
-            "output_limit_text": "O relatório deve ser objetivo e fornecer insights estratégicos acionáveis."
-            }
-
-        
-        # Chamar a API do GPT de forma assíncrona
-        response = await client.chat.completions.create(
-            model="gpt-4o-mini-2024-07-18",
-            messages=[
-                {"role": "system", "content": prompt["system"]},
-                {"role": "user", "content": prompt["content"]}
-            ]
-        )
-
-        return jsonify(response.choices[0].message.content.replace('Título do Documento','')), 200
+        return jsonify(response.text), 200
 
     except SQLAlchemyError as e:
         return jsonify({"error": "Erro ao buscar dados do banco", "details": str(e)}), 500
     except Exception as e:
-        return jsonify({"error": "Erro ao gerar relatório com GPT", "details": str(e)}), 500
+        return jsonify({"error": "Erro ao gerar relatório com Gemini", "details": str(e)}), 500
 
 
 # ---------------------------- CRUD Usuários ---------------------------- #
