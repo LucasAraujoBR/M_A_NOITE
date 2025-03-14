@@ -142,6 +142,7 @@ async def match_agile():
 
         project_id = data.get('project_id')
         user_ids = data.get('user_ids', [])
+        sprints = data.get('sprints')
 
         if not project_id or not user_ids:
             return jsonify({"error": "É necessário fornecer o ID do projeto e os IDs dos usuários."}), 400
@@ -191,6 +192,8 @@ async def match_agile():
         O projeto possui as seguintes tarefas:
         {json.dumps(project.get('tasks', 'Nenhuma tarefa definida'), indent=2)}
 
+        Divida em {sprints} sprints, o projeto requer a alocação dos seguintes usuários:
+
         Os seguintes usuários estão disponíveis para alocação, com suas respectivas competências, personalidades e áreas de atuação:
         {json.dumps(users, indent=2)}
 
@@ -208,7 +211,9 @@ async def match_agile():
         ## Insights Estratégicos
         Forneça recomendações para otimizar a execução do projeto, incluindo estratégias para melhorar a colaboração, reduzir riscos e potencializar os talentos disponíveis.
 
-        **Observação:** Todos os usuários devem ser alocados em pelo menos uma tarefa, podendo atuar como responsáveis ou auxiliares.
+        **Observação:** OBRIGATORIAMENTE Todos os usuários devem ser alocados em pelo menos uma tarefa, podendo atuar como responsáveis ou auxiliares.
+
+        Por fim, traga a listagem dos membros da equipe, suas respectivas funções e as tarefas a que estão alocados em cada sprint, destacando eventuais mudanças e ajustes ao longo do projeto.
         """
 
         # Chamar a API do Gemini
