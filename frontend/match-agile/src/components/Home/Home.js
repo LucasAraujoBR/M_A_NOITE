@@ -30,6 +30,7 @@ const Home = () => {
         <Link to="/tasks" style={styles.link}>📋 Tarefas</Link>
         <Link to="/projects" style={styles.link}>🚀 Projetos</Link>
         <Link to="/match_agile" style={styles.matchLink}>⚡Match Agile</Link>
+        <Link to="/re_match_agile" style={styles.re_matchLink}>⚡Re-Match Agile</Link>
       </nav>
     </div>
   );
@@ -102,6 +103,16 @@ const styles = {
   matchLink: {
     color: 'white',
     backgroundColor: '#28a745',
+    padding: '12px 20px',
+    fontSize: '1.3rem',
+    borderRadius: '5px',
+    textDecoration: 'none',
+    fontWeight: 'bold',
+    transition: 'background 0.3s ease, transform 0.2s',
+  },
+  re_matchLink: {
+    color: 'white',
+    backgroundColor: '#007bff', 
     padding: '12px 20px',
     fontSize: '1.3rem',
     borderRadius: '5px',

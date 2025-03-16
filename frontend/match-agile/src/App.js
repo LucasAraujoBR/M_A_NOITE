@@ -11,6 +11,8 @@ import CreateProject from './components/Projects/CreateProjetects';
 import EditProject from './components/Projects/EditProjects';
 import TaskList from './components/Tasks/TasksList';
 import ProjectUserSelect from './components/MatchAgile/SendUsersProject';
+import ReMatchAgile from './components/assembled/AssembledList';
+import ReMatchAgileDetails from './components/assembled/AssembledDetails';
 
 const App = () => {
   return (
@@ -27,6 +29,8 @@ const App = () => {
       <Route path="/projects/create" element={<CreateProject />} />
       <Route path="/projects/edit/:projectId" element={<EditProject />} />
       <Route path="/match_agile" element={<ProjectUserSelect />} />
+      <Route path="/re_match_agile" element={<ReMatchAgile />} />
+      <Route path="/projects/details/:projectId" element={<ReMatchAgileDetails />} />
       </Routes>
     </Router>
   );

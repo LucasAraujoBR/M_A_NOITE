@@ -35,6 +35,15 @@ CREATE TABLE IF NOT EXISTS project_tasks (
     FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
 );
 
+-- Criar tabela intermediária para associar projetos e usuários (N:N)
+CREATE TABLE IF NOT EXISTS project_users (
+    project_id INT NOT NULL,
+    users_id INT NOT NULL,
+    PRIMARY KEY (project_id, users_id),
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    FOREIGN KEY (users_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 -- Inserir 10 usuários fictícios
 INSERT INTO users (name, email, personality, level, areas) VALUES
 ('Lucas Silva', 'lucas@email.com', ARRAY['Analítico', 'Criativo'], 'Sênior', ARRAY['Backend', 'IA']),
@@ -86,3 +95,12 @@ INSERT INTO project_tasks (project_id, task_id) VALUES
 (3, 5), (3, 6), (3, 13), (3, 18),
 (4, 7), (4, 8), (4, 14), (4, 19),
 (5, 9), (5, 10), (5, 15), (5, 20);
+
+
+-- Inserir associações entre projetos e usuários (N:N)
+INSERT INTO project_users (project_id, users_id) VALUES
+(1, 1), (1, 3), (1, 5), (1, 7), (1, 9),  -- Backend e QA
+(2, 2), (2, 4), (2, 6), (2, 8), (2, 10), -- IA e Design
+(3, 1), (3, 2), (3, 5), (3, 6), (3, 9),  -- Design e Frontend
+(4, 3), (4, 4), (4, 7), (4, 8), (4, 10), -- QA e IA
+(5, 2), (5, 4), (5, 6), (5, 8), (5, 10); -- Frontend e Design

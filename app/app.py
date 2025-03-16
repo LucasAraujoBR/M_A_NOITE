@@ -529,6 +529,154 @@ def create_project():
     except SQLAlchemyError as e:
         return jsonify({"error": "Erro ao criar projeto", "details": str(e)}), 500
 
+@app.route('/projects/<int:project_id>/add-task', methods=['POST'])
+def add_task_to_project(project_id):
+    task_id = request.json.get('task_id')
+
+    if not task_id:
+        return jsonify({"error": "O ID da tarefa é necessário"}), 400
+
+    # Comando SQL para associar a tarefa ao projeto
+    query = text("""
+        INSERT INTO project_tasks (project_id, task_id)
+        VALUES (:project_id, :task_id)
+    """)
+
+    try:
+        with db.connect() as connection:
+            # Verifica se a tarefa existe antes de adicionar
+            result = connection.execute(text("""
+                SELECT 1 FROM tasks WHERE id = :task_id
+            """), {'task_id': task_id}).fetchone()
+
+            if not result:
+                return jsonify({"error": "A tarefa com o ID fornecido não existe"}), 404
+
+            # Adiciona a tarefa ao projeto
+            connection.execute(query, {'project_id': project_id, 'task_id': task_id})
+            connection.commit()
+
+        return jsonify({"message": "Tarefa adicionada ao projeto com sucesso"}), 201
+    except SQLAlchemyError as e:
+        return jsonify({"error": "Erro ao adicionar a tarefa ao projeto", "details": str(e)}), 500
+
+@app.route('/projects/<int:project_id>/users', methods=['GET'])
+def get_users_of_project(project_id):
+    query = text("""
+        SELECT u.id
+        FROM users u
+        JOIN project_users pu ON u.id = pu.users_id
+        WHERE pu.project_id = :project_id
+    """)
+
+    try:
+        with db.connect() as connection:
+            result = connection.execute(query, {'project_id': project_id})
+            users = [{"id": row[0]} for row in result]  # Acessa o valor pelo índice da tupla
+
+        if not users:
+            return jsonify({"message": "Nenhum usuário encontrado para este projeto"}), 404
+
+        return jsonify({"users_ids": users}), 200
+    except SQLAlchemyError as e:
+        return jsonify({"error": "Erro ao buscar os usuários do projeto", "details": str(e)}), 500
+
+
+@app.route('/projects/<int:project_id>/add-user', methods=['POST'])
+def add_user_to_project(project_id):
+    user_id = request.json.get('user_id')
+
+    if not user_id:
+        return jsonify({"error": "O ID do usuário é necessário"}), 400
+
+    # Comando SQL para adicionar o usuário ao projeto
+    query = text("""
+        INSERT INTO project_users (project_id, users_id)
+        VALUES (:project_id, :user_id)
+    """)
+
+    try:
+        with db.connect() as connection:
+            connection.execute(query, {'project_id': project_id, 'user_id': user_id})
+            connection.commit()
+
+        return jsonify({"message": "Usuário adicionado ao projeto com sucesso"}), 201
+    except SQLAlchemyError as e:
+        return jsonify({"error": "Erro ao adicionar o usuário ao projeto", "details": str(e)}), 500
+
+@app.route('/projects_assembled', methods=['GET'])
+def get_projects_assembled():
+    query = text("""
+        SELECT 
+            p.id, 
+            p.name, 
+            p.description, 
+            json_agg(DISTINCT jsonb_build_object(
+                'id', t.id, 
+                'title', t.title, 
+                'description', t.description, 
+                'category', t.category
+            )) AS tasks,
+            json_agg(DISTINCT jsonb_build_object(
+                'id', u.id, 
+                'name', u.name, 
+                'email', u.email, 
+                'level', u.level, 
+                'areas', u.areas
+            )) AS users
+        FROM projects p
+        JOIN project_users pu ON p.id = pu.project_id
+        JOIN users u ON pu.users_id = u.id
+        JOIN project_tasks pt ON p.id = pt.project_id
+        JOIN tasks t ON pt.task_id = t.id
+        GROUP BY p.id, p.name, p.description
+    """)
+    try:
+        with db.connect() as connection:
+            result = connection.execute(query)
+            projects = [dict(row._mapping) for row in result]
+        return jsonify(projects), 200
+    except SQLAlchemyError as e:
+        return jsonify({"error": "Erro ao buscar projetos", "details": str(e)}), 500
+    
+@app.route('/projects_assembled/<int:project_id>', methods=['GET'])
+def get_projects_assembled_by_id(project_id):
+    query = text("""
+        SELECT 
+            p.id, 
+            p.name, 
+            p.description, 
+            json_agg(DISTINCT jsonb_build_object(
+                'id', t.id, 
+                'title', t.title, 
+                'description', t.description, 
+                'category', t.category
+            )) AS tasks,
+            json_agg(DISTINCT jsonb_build_object(
+                'id', u.id, 
+                'name', u.name, 
+                'email', u.email, 
+                'level', u.level, 
+                'areas', u.areas
+            )) AS users
+        FROM projects p
+        JOIN project_users pu ON p.id = pu.project_id
+        JOIN users u ON pu.users_id = u.id
+        JOIN project_tasks pt ON p.id = pt.project_id
+        JOIN tasks t ON pt.task_id = t.id
+        WHERE p.id = :project_id
+        GROUP BY p.id, p.name, p.description
+    """)
+    
+    try:
+        with db.connect() as connection:
+            result = connection.execute(query, {'project_id': project_id})
+            projects = [dict(row._mapping) for row in result]
+        return jsonify(projects), 200
+    except SQLAlchemyError as e:
+        return jsonify({"error": "Erro ao buscar projetos", "details": str(e)}), 500
+
+
 @app.route('/projects', methods=['GET'])
 def get_projects():
     query = text("""
